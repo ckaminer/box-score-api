@@ -1,4 +1,4 @@
-const barstoolAdapter = require('../adapters/barstoolAdapter')
+const gameService = require('../services/gameService')
 
 const allData = async (req, res) => {
   const { league } = req.query
@@ -7,15 +7,16 @@ const allData = async (req, res) => {
     return
   }
 
-  let game = {}
+  let games
   try {
-    game = await barstoolAdapter.getAllGames(league.toUpperCase())
+    games = await gameService.getGamesList(league.toUpperCase())
   } catch (error) {
-    res.status(error.status).send({ message: 'Unable to retrieve game data' })
+    const status = error.status ? error.status : 500
+    res.status(status).send({ message: 'Unable to retrieve game data' })
     return
   }
 
-  res.status(200).send([game])
+  res.status(200).send(games)
 }
 
 module.exports = {

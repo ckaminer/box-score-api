@@ -1,11 +1,8 @@
 const gameService = require('../services/gameService')
 
 const allData = async (req, res) => {
-  const { league } = req.query
-  if (!league) {
-    res.status(400).send({ message: 'Missing league' })
-    return
-  }
+  let { league } = req.query
+  if (!league) league = 'ALL'
 
   let games
   try {

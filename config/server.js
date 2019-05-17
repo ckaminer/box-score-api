@@ -23,7 +23,8 @@ app.use((req, res, next) => {
   const validHeader = !req.headers.origin || req.headers.origin === 'http://localhost:8080'
   res.header('Access-Control-Allow-Origin', validHeader ? req.headers.origin : 'no')
   res.header('Access-Control-Allow-Methods', 'GET')
-  res.header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept')
+  res.header('Access-Control-Allow-Credentials', true)
+  res.header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization')
 
   next()
 })

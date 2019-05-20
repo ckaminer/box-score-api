@@ -5,4 +5,6 @@ const router = express.Router()
 
 router.get('/games', gameController.allData)
 
+router.post('/games', gameController.createGame)
+
 module.exports = router

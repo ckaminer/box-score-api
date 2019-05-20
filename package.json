@@ -5,10 +5,11 @@
   "main": "./config/server.js",
   "scripts": {
     "test": "node_modules/.bin/jest",
-    "acceptance": "NODE_TLS_REJECT_UNAUTHORIZED=0 node_modules/.bin/jest ./acceptance --runInBand",
+    "acceptance": "NODE_TLS_REJECT_UNAUTHORIZED=0 node_modules/.bin/jest ./acceptance --runInBand --env=node",
     "lint": "./node_modules/.bin/eslint .",
     "dev": "nodemon ./config/server.js",
-    "start": "node ./config/server.js"
+    "start": "node ./config/server.js",
+    "suite": "npm run test && npm run acceptance && npm run lint"
   },
   "author": "",
   "license": "ISC",

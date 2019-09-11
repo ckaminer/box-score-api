@@ -32,7 +32,21 @@ const createGame = async (req, res) => {
   res.status(200).send(createdGame)
 }
 
+const findCollection = async (req, res) => {
+  let gameCollection
+  try {
+    gameCollection = await mongoAdapter.findGames()
+  } catch (err) {
+    res.status(500).send('blamo')
+    return
+  }
+
+  console.log('FOUND COLLECION:::: ', gameCollection)
+  res.status(200).send(gameCollection)
+}
+
 module.exports = {
   allData,
   createGame,
+  findCollection,
 }

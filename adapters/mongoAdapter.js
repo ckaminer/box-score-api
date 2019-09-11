@@ -31,6 +31,20 @@ const saveGame = async (game) => (
   })
 )
 
+const findGames = async () => (
+  new Promise((resolve, reject) => {
+    connect().then((conn) => {
+      const db = conn.db('BOX_SCORE')
+      const cursor = db.collection('games').find().sort({ league: 1 })
+      const games = cursor.toArray()
+      resolve(games)
+    }).catch((err) => {
+      reject(err)
+    })
+  })
+)
+
 module.exports = {
   saveGame,
+  findGames,
 }

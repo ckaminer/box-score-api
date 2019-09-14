@@ -28,7 +28,6 @@ const createGame = async (req, res) => {
     return
   }
 
-  console.log('CREATED GAME::::', createdGame)
   res.status(200).send(createdGame)
 }
 
@@ -41,7 +40,6 @@ const findCollection = async (req, res) => {
     return
   }
 
-  console.log('FOUND COLLECION:::: ', gameCollection)
   res.status(200).send(gameCollection)
 }
 

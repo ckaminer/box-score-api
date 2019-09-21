@@ -14,16 +14,25 @@ const connect = async () => {
   }
 }
 
-const saveGame = async (game) => (
+const upsertGame = async (game) => (
   new Promise((resolve, reject) => {
     connect().then(async (conn) => {
       const db = conn.db('BOX_SCORE')
       try {
-        const result = await db.collection('games').insertOne(game)
+        const result = await db.collection('games').update(
+          game.src_id,
+          { _id: objectId(), ...game },
+          { upsert: true },
+        )
         conn.close()
-        resolve(result.ops[0])
+        if (result.nUpserted + result.nModified === 1) {
+          resolve()
+        } else {
+          logger.error(`[MONGO - UPSERTGAME] - Failed to upsert game for given id: ${game.src_id}`)
+          reject(new Error(`Failed to upsert game for given id: ${game.src_id}`))
+        }
       } catch (err) {
-        logger.error(`[MONGO - SAVEGAME] - Error saving game: ${err}`)
+        logger.error(`[MONGO - UPSERTGAME] - Error upserting game: ${err}`)
         reject(err)
       }
     }).catch((err) => {
@@ -45,50 +54,14 @@ const findGames = async (query = {}) => (
   })
 )
 
-const findAllGames = async () => {
-  const games = await findGames()
-  return games
-}
-
-const findAllGamesByLeague = async (league) => {
-  const games = await findGames({ league })
-  return games
-}
-
 const findSingleGame = async (eventInformation) => {
   const games = await findGames(eventInformation)
   return games[0]
 }
 
-const deleteGameById = (id) => (
-  new Promise((resolve, reject) => {
-    connect().then(async (conn) => {
-      const db = conn.db('BOX_SCORE')
-      try {
-        const result = await db.collection('games').deleteOne({ _id: objectId(id) })
-        conn.close()
-        if (result.deletedCount === 1) {
-          resolve()
-        } else {
-          logger.error(`[MONGO - DELETEGAMEBYID] - Failed to delete game for given id: ${id}`)
-          reject(new Error(`Failed to delete game for given id: ${id}`))
-        }
-      } catch (err) {
-        logger.error(`[MONGO - DELETEGAMEBYID] - Error deleting game: ${err}`)
-        reject(err)
-      }
-    }).catch((err) => {
-      reject(err)
-    })
-  })
-)
-
 module.exports = {
   connect,
-  saveGame,
+  upsertGame,
   findGames,
-  findAllGames,
-  findAllGamesByLeague,
   findSingleGame,
-  deleteGameById,
 }

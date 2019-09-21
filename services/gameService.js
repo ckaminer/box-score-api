@@ -1,13 +1,42 @@
+const objectId = require('mongodb').ObjectID
 const barstoolAdapter = require('../adapters/barstoolAdapter')
+const mongoAdapter = require('../adapters/mongoAdapter')
 
-const getGamesList = async (league) => {
+const logger = require('../config/logging')
+
+const getGameById = async (id) => {
+  let game
+  try {
+    game = await mongoAdapter.findSingleGame({ src_id: id })
+  } catch (err) {
+    const logMessage = `[gameService - getGameById(${id}) - ${err.message}]`
+    logger.log('error', logMessage)
+  }
+
+  // eslint-disable-next-line no-underscore-dangle
+  const timestamp = game ? objectId(game._id).getTimestamp().getTime() : 0
+  const timeDiff = (Date.now() - timestamp) / 1000
+  if (timeDiff > 15) {
+    try {
+      game = await barstoolAdapter.getGameById(id)
+      await mongoAdapter.upsertGame({ src_id: id, ...game })
+    } catch (err) {
+      const logMessage = `[gameService - getGameById(${id}) - ${err.message}]`
+      logger.log('error', logMessage)
+      throw new Error(`Failed to retrieve game ${id}`)
+    }
+  }
+
+  return game
+}
+
+const getGamesList = async (gameIds) => {
   let allGames = []
-  const leagues = league.toUpperCase() === 'ALL' ? ['NBA', 'MLB'] : [league]
 
-  const leaguePromises = leagues.map(l => (
+  const gamePromises = gameIds.map(id => (
     new Promise(async (resolve, reject) => {
       try {
-        const games = await barstoolAdapter.getAllGames(l)
+        const games = await getGameById(id)
         allGames = allGames.concat(games)
         resolve()
       } catch (err) {
@@ -17,7 +46,7 @@ const getGamesList = async (league) => {
   ))
 
   try {
-    await Promise.all(leaguePromises)
+    await Promise.all(gamePromises)
   } catch (err) {
     throw err
   }
@@ -26,5 +55,6 @@ const getGamesList = async (league) => {
 }
 
 module.exports = {
+  getGameById,
   getGamesList,
 }

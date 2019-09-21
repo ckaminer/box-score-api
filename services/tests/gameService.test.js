@@ -1,50 +1,115 @@
+const objectId = require('mongodb').ObjectID
 const gameService = require('../gameService')
 const barstoolAdapter = require('../../adapters/barstoolAdapter')
+const mongoAdapter = require('../../adapters/mongoAdapter')
 
 describe('gameService', () => {
-  describe('#getGamesList', () => {
-    afterEach(() => {
-      barstoolAdapter.getAllGames.mockClear()
+  describe('#getGameById', () => {
+    it('should return a single game from the mongo cache if it is less than 15 seconds old', async () => {
+      const game = {
+        _id: objectId(),
+        src_id: 'eed38457-db28-4658-ae4f-4d4d38e9e212',
+        league: 'MLB',
+        home_team: { first_name: 'Boston', last_name: 'Red Sox' },
+        away_team: { first_name: 'New York', last_name: 'Yankees' },
+      }
+
+      const mongoMock = jest.spyOn(mongoAdapter, 'findSingleGame')
+        .mockResolvedValueOnce(game)
+      const barstoolMock = jest.spyOn(barstoolAdapter, 'getGameById')
+
+      const result = await gameService.getGameById(game.src_id)
+
+      expect(mongoMock).toHaveBeenCalledWith({ src_id: game.src_id })
+      expect(barstoolMock).not.toHaveBeenCalled()
+      expect(result).toEqual(game)
     })
-    it('should return a list of games for either MLB or NBA', async () => {
+
+    it('should return a single game from the barstool adapter if cache is more than 15 seconds old', async () => {
+      const mongoGame = {
+        _id: '5d7d32ca23c9ad2808b7caba', // old objectId taken from mongo instance
+        src_id: 'eed38457-db28-4658-ae4f-4d4d38e9e212',
+        league: 'MLB',
+        home_team: { first_name: 'Boston', last_name: 'Red Sox' },
+        away_team: { first_name: 'New York', last_name: 'Yankees' },
+      }
+
+      const { _id, ...barstoolGame } = mongoGame
+
+      const mongoFindMock = jest.spyOn(mongoAdapter, 'findSingleGame')
+        .mockResolvedValueOnce(mongoGame)
+      const barstoolMock = jest.spyOn(barstoolAdapter, 'getGameById')
+        .mockResolvedValueOnce(barstoolGame)
+      const mongoUpsertMock = jest.spyOn(mongoAdapter, 'upsertGame')
+        .mockResolvedValueOnce()
+
+      const result = await gameService.getGameById(mongoGame.src_id)
+
+      expect(mongoFindMock).toHaveBeenCalledWith({ src_id: mongoGame.src_id })
+      expect(barstoolMock).toHaveBeenCalledWith(mongoGame.src_id)
+      expect(mongoUpsertMock).toHaveBeenCalledWith(barstoolGame)
+      expect(result).toEqual(barstoolGame)
+    })
+
+    it('should return a single game from the barstool adapter if mongo call fails', async () => {
+      const game = {
+        src_id: 'eed38457-db28-4658-ae4f-4d4d38e9e212',
+        league: 'MLB',
+        home_team: { first_name: 'Boston', last_name: 'Red Sox' },
+        away_team: { first_name: 'New York', last_name: 'Yankees' },
+      }
+
+      const mongoFindMock = jest.spyOn(mongoAdapter, 'findSingleGame')
+        .mockRejectedValueOnce(new Error('BLAMO'))
+      const barstoolMock = jest.spyOn(barstoolAdapter, 'getGameById')
+        .mockResolvedValueOnce(game)
+      const mongoUpsertMock = jest.spyOn(mongoAdapter, 'upsertGame')
+        .mockResolvedValueOnce()
+
+      const result = await gameService.getGameById(game.src_id)
+
+      expect(mongoFindMock).toHaveBeenCalledWith({ src_id: game.src_id })
+      expect(barstoolMock).toHaveBeenCalledWith(game.src_id)
+      expect(mongoUpsertMock).toHaveBeenCalledWith(game)
+      expect(result).toEqual(game)
+    })
+
+    it('should return an error if barstool needs to be called and it returns an error', async (done) => {
+      const gameId = 'eed38457-db28-4658-ae4f-4d4d38e9e212'
+
+      const mongoFindMock = jest.spyOn(mongoAdapter, 'findSingleGame')
+        .mockRejectedValueOnce(new Error('MONGO BLAMO'))
+      const barstoolMock = jest.spyOn(barstoolAdapter, 'getGameById')
+        .mockRejectedValueOnce(new Error('BARSTOOL BLAMO'))
+      const mongoUpdateMock = jest.spyOn(mongoAdapter, 'upsertGame')
+
+      try {
+        await gameService.getGameById(gameId)
+        done.fail('Expected game service to fail but it did not.')
+      } catch (err) {
+        expect(mongoFindMock).toHaveBeenCalledWith({ src_id: gameId })
+        expect(barstoolMock).toHaveBeenCalledWith(gameId)
+        expect(mongoUpdateMock).not.toHaveBeenCalled()
+      }
+      done()
+    })
+  })
+
+  describe('#getGamesList', () => {
+    it('should return a list of games for the given ids', async () => {
       const game = {
         league: 'MLB',
         home_team: { first_name: 'Boston', last_name: 'Red Sox' },
         away_team: { first_name: 'New York', last_name: 'Yankees' },
       }
-      const barstoolMock = jest.spyOn(barstoolAdapter, 'getAllGames')
-        .mockResolvedValueOnce([game])
+      const mongoMock = jest.spyOn(mongoAdapter, 'findSingleGame')
+        .mockResolvedValueOnce(game)
 
       const expectedResult = [game]
+      const id = '1234567890-abcdef'
+      const result = await gameService.getGamesList([id])
 
-      const result = await gameService.getGamesList('MLB')
-
-      expect(barstoolMock).toHaveBeenCalledWith('MLB')
-      expect(result).toEqual(expectedResult)
-    })
-
-    it('should return a list of all games if league is ALL', async () => {
-      const mlbGame = {
-        league: 'MLB',
-        home_team: { first_name: 'Boston', last_name: 'Red Sox' },
-        away_team: { first_name: 'New York', last_name: 'Yankees' },
-      }
-      const nbaGame = {
-        league: 'NBA',
-        home_team: { first_name: 'Boston', last_name: 'Celtics' },
-        away_team: { first_name: 'New York', last_name: 'Knicks' },
-      }
-      const barstoolMock = jest.spyOn(barstoolAdapter, 'getAllGames')
-        .mockResolvedValueOnce([mlbGame])
-        .mockResolvedValueOnce([nbaGame])
-
-      const expectedResult = [mlbGame, nbaGame]
-
-      const result = await gameService.getGamesList('ALL')
-
-      expect(barstoolMock).toHaveBeenCalledTimes(2)
-      expect(barstoolMock).toHaveBeenCalledWith('MLB')
-      expect(barstoolMock).toHaveBeenCalledWith('NBA')
+      expect(mongoMock).toHaveBeenCalledWith({ src_id: id })
       expect(result).toEqual(expectedResult)
     })
 
@@ -55,20 +120,26 @@ describe('gameService', () => {
         away_team: { first_name: 'New York', last_name: 'Yankees' },
       }
 
-      const barstoolMock = jest.spyOn(barstoolAdapter, 'getAllGames')
-        .mockResolvedValueOnce([mlbGame])
+      const mongoMock = jest.spyOn(mongoAdapter, 'findSingleGame')
+        .mockResolvedValueOnce(mlbGame)
+        .mockRejectedValueOnce('BLAMO')
+
+      const barstoolMock = jest.spyOn(barstoolAdapter, 'getGameById')
         .mockRejectedValueOnce({ response: 'Request failed', status: 400 })
 
+      const ids = ['abc', '123']
       try {
-        await gameService.getGamesList('ALL')
-        done.fail()
+        await gameService.getGamesList(ids)
+        done.fail('Expected get games list to return an error but it did not.')
       } catch (error) {
-        expect(barstoolMock).toHaveBeenCalledTimes(2)
-        expect(barstoolMock).toHaveBeenCalledWith('MLB')
-        expect(barstoolMock).toHaveBeenCalledWith('NBA')
+        expect(mongoMock).toHaveBeenCalledTimes(2)
+        expect(mongoMock).toHaveBeenCalledWith({ src_id: ids[0] })
+        expect(mongoMock).toHaveBeenCalledWith({ src_id: ids[1] })
 
-        expect(error.response).toEqual('Request failed')
-        expect(error.status).toEqual(400)
+        expect(barstoolMock).toHaveBeenCalledTimes(1)
+        expect(barstoolMock).toHaveBeenCalledWith(ids[1])
+
+        expect(error.message).toEqual('Failed to retrieve game 123')
       }
 
       done()

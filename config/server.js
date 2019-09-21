@@ -1,18 +1,9 @@
 const express = require('express')
 const morgan = require('morgan')
-const mongoClient = require('mongodb').MongoClient
 
 const logger = require('./logging')
 const router = require('./router')
 
-
-mongoClient.connect('mongodb://127.0.0.1:27017/BOX_SCORE', (err, database) => {
-  if (err) {
-    console.log('ERROR:::: ', err)
-  } else {
-    console.log('DATABASE::: ', database)
-  }
-})
 const app = express()
 
 app.use(morgan('dev'))

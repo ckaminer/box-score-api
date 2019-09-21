@@ -4,7 +4,7 @@
   "description": "",
   "main": "./config/server.js",
   "scripts": {
-    "test": "node_modules/.bin/jest",
+    "test": "node_modules/.bin/jest --testPathIgnorePatterns='<rootDir>/acceptance/*'",
     "acceptance": "NODE_TLS_REJECT_UNAUTHORIZED=0 node_modules/.bin/jest ./acceptance --runInBand --env=node",
     "lint": "./node_modules/.bin/eslint .",
     "dev": "nodemon ./config/server.js",

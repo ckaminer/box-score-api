@@ -1,19 +1,17 @@
 const mongoClient = require('mongodb').MongoClient
+const objectId = require('mongodb').ObjectID
 const mongoAdapter = require('../mongoAdapter')
 
 describe('mongoAdapter', () => {
-  afterEach(() => {
-    mongoClient.connect.mockClear()
-  })
-  const setUpConnMock = (mockCollFuncs) => {
-    return {
+  const setUpConnMock = (mockCollFuncs) => (
+    {
       url: 'mongodb://127.0.0.1:27017/BOX_SCORE',
       close: jest.fn(),
       db: jest.fn().mockReturnValueOnce({
         collection: jest.fn().mockReturnValueOnce(mockCollFuncs),
       }),
     }
-  }
+  )
   describe('connect', () => {
     it('returns a connection to the database upon success', async (done) => {
       const connection = { url: 'mongodb://127.0.0.1:27017/BOX_SCORE' }
@@ -230,6 +228,93 @@ describe('mongoAdapter', () => {
         expect(result).toEqual(game)
         done()
       })
+    })
+  })
+
+  describe('deleteGameById', () => {
+    it('should delete a single game document from the database', async (done) => {
+      const response = {
+        result: { n: 1, ok: 1 },
+        connection: { id: 0, host: '127.0.0.1', port: 27017 },
+        deletedCount: 1,
+        n: 1,
+        ok: 1,
+      }
+      const mockDelete = jest.fn().mockResolvedValueOnce(response)
+
+      const conn = setUpConnMock({ deleteOne: mockDelete })
+
+      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+
+      const gameId = 'abcdef123456'
+      try {
+        await mongoAdapter.deleteGameById(gameId)
+      } catch (err) {
+        done.fail(`Failed to save game due to: ${err}`)
+      }
+
+      expect(mockDelete).toHaveBeenCalledWith({ _id: objectId(gameId) })
+      done()
+    })
+
+    it('should return an error if the db call is successful but deletedCount is not 1', async (done) => {
+      const response = {
+        result: { n: 1, ok: 0 },
+        connection: { id: 0, host: '127.0.0.1', port: 27017 },
+        deletedCount: 0,
+        n: 1,
+        ok: 0,
+      }
+      const mockDelete = jest.fn().mockResolvedValueOnce(response)
+
+      const conn = setUpConnMock({ deleteOne: mockDelete })
+
+      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+
+      const gameId = 'abcdef123456'
+      try {
+        await mongoAdapter.deleteGameById(gameId)
+        done.fail('Expected game to not be deleted but it was.')
+      } catch (err) {
+        expect(mockDelete).toHaveBeenCalledWith({ _id: objectId(gameId) })
+      }
+
+      done()
+    })
+
+    it('should return an error if mongo deleteOne returns an error', async (done) => {
+      const error = new Error('BLAMO')
+      const mockDelete = jest.fn().mockRejectedValueOnce(error)
+
+      const conn = setUpConnMock({ deleteOne: mockDelete })
+
+      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+
+      const gameId = 'abcdef123456'
+      try {
+        await mongoAdapter.deleteGameById(gameId)
+        done.fail('Expected game to not be deleted but it was.')
+      } catch (err) {
+        expect(mockDelete).toHaveBeenCalledWith({ _id: objectId(gameId) })
+        expect(err).toEqual(error)
+      }
+
+      done()
+    })
+
+    it('should return an error if the mongo connection fails to open', async (done) => {
+      const error = new Error('Failed to conenct to DB')
+      jest.spyOn(mongoClient, 'connect').mockRejectedValueOnce(error)
+
+      const gameId = 'abcdef123456'
+      try {
+        await mongoAdapter.deleteGameById(gameId)
+        done.fail('Expected game to not be deleted but it was.')
+      } catch (err) {
+        expect(err).toEqual(error)
+      }
+
+      done()
     })
   })
 })

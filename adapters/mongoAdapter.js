@@ -1,12 +1,12 @@
 const mongoClient = require('mongodb').MongoClient
-const objectId = require('mongodb').ObjectID
 
 const logger = require('../config/logging')
 
 const connect = async () => {
   try {
-    const client = await mongoClient.connect('mongodb://127.0.0.1:27017/BOX_SCORE')
-    logger.info('[MONGO - CONNECT] - Successfully connected to Mongo')
+    // local address used for development, else use mongo image from docker
+    const mongoAddress = process.env.LOCAL ? '127.0.0.1' : 'mongo'
+    const client = await mongoClient.connect(`mongodb://${mongoAddress}:27017/BOX_SCORE`, { useNewUrlParser: true })
     return client
   } catch (err) {
     logger.error(`[MONGO - CONNECT] - Failed to connect to Mongo: ${err}`)
@@ -20,12 +20,12 @@ const upsertGame = async (game) => (
       const db = conn.db('BOX_SCORE')
       try {
         const result = await db.collection('games').update(
-          game.src_id,
-          { _id: objectId(), ...game },
+          { src_id: game.src_id },
+          { updated_at: Date.now(), ...game },
           { upsert: true },
         )
         conn.close()
-        if (result.nUpserted + result.nModified === 1) {
+        if (result.result.n === 1) {
           resolve()
         } else {
           logger.error(`[MONGO - UPSERTGAME] - Failed to upsert game for given id: ${game.src_id}`)
@@ -47,6 +47,7 @@ const findGames = async (query = {}) => (
       const db = conn.db('BOX_SCORE')
       const cursor = db.collection('games').find(query).sort({ _id: -1 })
       const games = cursor.toArray()
+      conn.close()
       resolve(games)
     }).catch((err) => {
       reject(err)
@@ -59,9 +60,25 @@ const findSingleGame = async (eventInformation) => {
   return games[0]
 }
 
+const clearGamesCollection = async () => (
+  new Promise((resolve, reject) => {
+    connect().then((conn) => {
+      const db = conn.db('BOX_SCORE')
+      db.collection('games').deleteMany()
+      logger.info('[MONGO - clearGamesCollection] - Successfully cleared Mongo cache')
+      conn.close()
+      resolve()
+    }).catch((err) => {
+      logger.error(`[MONGO - clearGamesCollection] - Error clearing cache: ${err}`)
+      reject(err)
+    })
+  })
+)
+
 module.exports = {
   connect,
   upsertGame,
   findGames,
   findSingleGame,
+  clearGamesCollection,
 }

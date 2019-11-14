@@ -8,6 +8,7 @@ describe('gameService', () => {
     it('should return a single game from the mongo cache if it is less than 15 seconds old', async () => {
       const game = {
         _id: objectId(),
+        updated_at: Date.now(),
         src_id: 'eed38457-db28-4658-ae4f-4d4d38e9e212',
         league: 'MLB',
         home_team: { first_name: 'Boston', last_name: 'Red Sox' },
@@ -28,6 +29,7 @@ describe('gameService', () => {
     it('should return a single game from the barstool adapter if cache is more than 15 seconds old', async () => {
       const mongoGame = {
         _id: '5d7d32ca23c9ad2808b7caba', // old objectId taken from mongo instance
+        updated_at: new Date(2019, 1, 1),
         src_id: 'eed38457-db28-4658-ae4f-4d4d38e9e212',
         league: 'MLB',
         home_team: { first_name: 'Boston', last_name: 'Red Sox' },
@@ -54,6 +56,7 @@ describe('gameService', () => {
     it('should return a single game from the barstool adapter if mongo call fails', async () => {
       const game = {
         src_id: 'eed38457-db28-4658-ae4f-4d4d38e9e212',
+        updated_at: Date.now(),
         league: 'MLB',
         home_team: { first_name: 'Boston', last_name: 'Red Sox' },
         away_team: { first_name: 'New York', last_name: 'Yankees' },

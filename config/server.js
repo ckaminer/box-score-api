@@ -3,6 +3,7 @@ const morgan = require('morgan')
 
 const logger = require('./logging')
 const router = require('./router')
+const mongoAdapter = require('../adapters/mongoAdapter')
 
 const app = express()
 
@@ -19,6 +20,11 @@ app.use((req, res, next) => {
 
   next()
 })
+
+// Delay clearing off cache while rest of application is spun up
+setTimeout(() => {
+  mongoAdapter.clearGamesCollection()
+}, 5000)
 
 const server = app.listen(8081, () => {
   logger.log('info', '[EXPRESS] - listening on port: 8081')

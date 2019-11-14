@@ -1,4 +1,3 @@
-const objectId = require('mongodb').ObjectID
 const barstoolAdapter = require('../adapters/barstoolAdapter')
 const mongoAdapter = require('../adapters/mongoAdapter')
 
@@ -14,7 +13,7 @@ const getGameById = async (id) => {
   }
 
   // eslint-disable-next-line no-underscore-dangle
-  const timestamp = game ? objectId(game._id).getTimestamp().getTime() : 0
+  const timestamp = game ? game.updated_at : 0
   const timeDiff = (Date.now() - timestamp) / 1000
   if (timeDiff > 15) {
     try {

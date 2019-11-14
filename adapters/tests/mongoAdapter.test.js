@@ -51,7 +51,7 @@ describe('mongoAdapter', () => {
       const response = { result: { n: 1 } }
       const mockUpdate = jest.fn().mockResolvedValueOnce(response)
 
-      const conn = setUpConnMock({ update: mockUpdate })
+      const conn = setUpConnMock({ updateOne: mockUpdate })
 
       jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
 
@@ -64,7 +64,7 @@ describe('mongoAdapter', () => {
 
       const updateParams = mockUpdate.mock.calls[0]
       // eslint-disable-next-line camelcase
-      const { updated_at, ...updateParamGame } = updateParams[1]
+      const { updated_at, ...updateParamGame } = updateParams[1].$set
 
       expect(updateParams[0]).toEqual({ src_id: game.src_id })
       expect(updateParamGame).toEqual(game)
@@ -76,7 +76,7 @@ describe('mongoAdapter', () => {
       const response = { response: { n: 0 } }
       const mockUpdate = jest.fn().mockResolvedValueOnce(response)
 
-      const conn = setUpConnMock({ update: mockUpdate })
+      const conn = setUpConnMock({ updateOne: mockUpdate })
 
       jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
 
@@ -87,7 +87,7 @@ describe('mongoAdapter', () => {
       } catch (err) {
         const updateParams = mockUpdate.mock.calls[0]
         // eslint-disable-next-line camelcase
-        const { updated_at, ...updateParamGame } = updateParams[1]
+        const { updated_at, ...updateParamGame } = updateParams[1].$set
 
         expect(updateParams[0]).toEqual({ src_id: game.src_id })
         expect(updateParamGame).toEqual(game)
@@ -101,7 +101,7 @@ describe('mongoAdapter', () => {
       const error = new Error('BLAMO')
       const mockUpdate = jest.fn().mockRejectedValueOnce(error)
 
-      const conn = setUpConnMock({ update: mockUpdate })
+      const conn = setUpConnMock({ updateOne: mockUpdate })
 
       jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
 
@@ -112,7 +112,7 @@ describe('mongoAdapter', () => {
       } catch (err) {
         const updateParams = mockUpdate.mock.calls[0]
         // eslint-disable-next-line camelcase
-        const { updated_at, ...updateParamGame } = updateParams[1]
+        const { updated_at, ...updateParamGame } = updateParams[1].$set
 
         expect(updateParams[0]).toEqual({ src_id: game.src_id })
         expect(updateParamGame).toEqual(game)

@@ -19,9 +19,9 @@ const upsertGame = async (game) => (
     connect().then(async (conn) => {
       const db = conn.db('BOX_SCORE')
       try {
-        const result = await db.collection('games').update(
+        const result = await db.collection('games').updateOne(
           { src_id: game.src_id },
-          { updated_at: Date.now(), ...game },
+          { $set: { updated_at: Date.now(), ...game } },
           { upsert: true },
         )
         conn.close()

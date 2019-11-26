@@ -148,4 +148,55 @@ describe('gameService', () => {
       done()
     })
   })
+
+  describe('#sortGamesByLeagueAndDate', () => {
+    it('Should return the passed in games list sorted first by league and second by start date', () => {
+      const nbaOne = {
+        league: 'NBA',
+        event_information: {
+          start_date_time: '2012-06-21T18:00:00-07:00',
+        },
+      }
+      const nbaTwo = {
+        league: 'NBA',
+        event_information: {
+          start_date_time: '2012-06-25T18:00:00-07:00',
+        },
+      }
+      const nbaThree = {
+        league: 'NBA',
+        event_information: {
+          start_date_time: '2012-06-25T15:00:00-07:00',
+        },
+      }
+      const mlbOne = {
+        league: 'MLB',
+        event_information: {
+          start_date_time: '2012-06-25T17:00:00-07:00',
+        },
+      }
+      const mlbTwo = {
+        league: 'MLB',
+        event_information: {
+          start_date_time: '2012-06-20T15:00:00-07:00',
+        },
+      }
+      const mlbThree = {
+        league: 'MLB',
+        event_information: {
+          start_date_time: '2012-06-25T18:00:00-07:00',
+        },
+      }
+
+      const games = [nbaOne, nbaTwo, nbaThree, mlbOne, mlbTwo, mlbThree]
+      const sortedGames = gameService.sortGamesByLeagueAndDate(games)
+
+      expect(sortedGames[0]).toEqual(mlbTwo)
+      expect(sortedGames[1]).toEqual(mlbOne)
+      expect(sortedGames[2]).toEqual(mlbThree)
+      expect(sortedGames[3]).toEqual(nbaOne)
+      expect(sortedGames[4]).toEqual(nbaThree)
+      expect(sortedGames[5]).toEqual(nbaTwo)
+    })
+  })
 })

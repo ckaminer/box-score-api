@@ -29,6 +29,19 @@ const getGameById = async (id) => {
   return game
 }
 
+const sortGamesByLeagueAndDate = (games) => (
+  games.sort((gameOne, gameTwo) => {
+    const firstLeague = gameOne.league
+    const secondLeague = gameTwo.league
+    const firstDate = new Date(gameOne.event_information.start_date_time)
+    const secondDate = new Date(gameTwo.event_information.start_date_time)
+    if (firstLeague === secondLeague) {
+      return firstDate < secondDate ? -1 : 1
+    }
+    return firstLeague < secondLeague ? -1 : 1
+  })
+)
+
 const getGamesList = async (gameIds) => {
   let allGames = []
 
@@ -50,10 +63,11 @@ const getGamesList = async (gameIds) => {
     throw err
   }
 
-  return allGames
+  return sortGamesByLeagueAndDate(allGames)
 }
 
 module.exports = {
   getGameById,
   getGamesList,
+  sortGamesByLeagueAndDate,
 }

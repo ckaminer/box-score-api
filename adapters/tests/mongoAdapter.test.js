@@ -1,31 +1,45 @@
 const mongoClient = require('mongodb').MongoClient
 const mongoAdapter = require('../mongoAdapter')
 
+// Create a connection object with provided mocked out collection functions
+const setUpConnMock = (mockCollFuncs) => (
+  {
+    url: 'mongodb://127.0.0.1:27017/BOX_SCORE',
+    close: jest.fn(),
+    db: jest.fn().mockReturnValueOnce({
+      collection: jest.fn().mockReturnValueOnce(mockCollFuncs),
+    }),
+  }
+)
+
+// Set up for non-connect db functions
+// Execute connection to set global consts
+const setUp = async (collectionFuncs) => {
+  const mockConnection = setUpConnMock(collectionFuncs)
+  jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(mockConnection)
+  await mongoAdapter.connect()
+}
+
 describe('mongoAdapter', () => {
-  const setUpConnMock = (mockCollFuncs) => (
-    {
-      url: 'mongodb://127.0.0.1:27017/BOX_SCORE',
-      close: jest.fn(),
-      db: jest.fn().mockReturnValueOnce({
-        collection: jest.fn().mockReturnValueOnce(mockCollFuncs),
-      }),
-    }
-  )
   describe('#connect', () => {
-    it('returns a connection to the database upon success', async (done) => {
-      const connection = { url: 'mongodb://127.0.0.1:27017/BOX_SCORE' }
+    it('sets the connection and collection to the database upon success', async (done) => {
+      const collectionFuncs = {}
+      const connection = setUpConnMock(collectionFuncs)
 
       const mongoMock = jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(connection)
+      const callback = () => { }
 
       let result
       try {
-        result = await mongoAdapter.connect()
+        result = await mongoAdapter.connect(callback)
       } catch (err) {
         done.fail('Failed to connect to mongo')
       }
 
       expect(mongoMock).toHaveBeenCalled()
-      expect(result).toEqual(connection)
+      expect(mongoAdapter.getConnection()).toEqual(connection)
+      expect(mongoAdapter.getGamesCollection()).toEqual(collectionFuncs)
+      expect(result).toEqual(callback)
       done()
     })
 
@@ -50,10 +64,7 @@ describe('mongoAdapter', () => {
     it('should upsert the given game based on the src_id', async (done) => {
       const response = { result: { n: 1 } }
       const mockUpdate = jest.fn().mockResolvedValueOnce(response)
-
-      const conn = setUpConnMock({ updateOne: mockUpdate })
-
-      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+      await setUp({ updateOne: mockUpdate })
 
       const game = { src_id: '123', league: 'MLB' }
       try {
@@ -75,10 +86,7 @@ describe('mongoAdapter', () => {
     it('should return an error if no game documents are affected', async (done) => {
       const response = { response: { n: 0 } }
       const mockUpdate = jest.fn().mockResolvedValueOnce(response)
-
-      const conn = setUpConnMock({ updateOne: mockUpdate })
-
-      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+      await setUp({ updateOne: mockUpdate })
 
       const game = { src_id: '123', league: 'MLB' }
       try {
@@ -100,10 +108,7 @@ describe('mongoAdapter', () => {
     it('should return an error if update fails', async (done) => {
       const error = new Error('BLAMO')
       const mockUpdate = jest.fn().mockRejectedValueOnce(error)
-
-      const conn = setUpConnMock({ updateOne: mockUpdate })
-
-      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+      await setUp({ updateOne: mockUpdate })
 
       const game = { src_id: '123', league: 'MLB' }
       try {
@@ -119,20 +124,6 @@ describe('mongoAdapter', () => {
         expect(updateParams[2]).toEqual({ upsert: true })
       }
 
-      done()
-    })
-
-    it('should return an error if db fails to connect', async (done) => {
-      const error = new Error('Failed to conenct to DB')
-      jest.spyOn(mongoClient, 'connect').mockRejectedValueOnce(error)
-
-      const game = { src_id: '123', league: 'MLB' }
-      try {
-        await mongoAdapter.upsertGame(game)
-        done.fail('Expected upsert to fail but it did not.')
-      } catch (err) {
-        expect(err).toEqual(error)
-      }
       done()
     })
   })
@@ -151,9 +142,7 @@ describe('mongoAdapter', () => {
       it('should return a collection of games for the given query', async (done) => {
         const game = { _id: '12345', league: 'MLB' }
         const mockFind = setUpFindMock([game])
-        const conn = setUpConnMock({ find: mockFind })
-
-        jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+        await setUp({ find: mockFind })
 
         const query = { league: 'MLB' }
         let result
@@ -169,13 +158,17 @@ describe('mongoAdapter', () => {
         done()
       })
 
-      it('returns an error if the connection fails to open', async (done) => {
-        const error = new Error('Failed to conenct to DB')
-        jest.spyOn(mongoClient, 'connect').mockRejectedValueOnce(error)
+      it('should return an error if the query execution fails', async (done) => {
+        const error = new Error('BLAMO')
+        const mockFind = jest.fn().mockReturnValueOnce({
+          sort: jest.fn().mockRejectedValueOnce(error),
+        })
+        await setUp({ find: mockFind })
 
+        const query = { league: 'MLB' }
         try {
-          await mongoAdapter.findGames()
-          done.fail('Expected find to fail but it did not.')
+          await mongoAdapter.findGames(query)
+          done.fail('Expected find to fail but it did not')
         } catch (err) {
           expect(err).toEqual(error)
         }
@@ -188,9 +181,7 @@ describe('mongoAdapter', () => {
       it('should find a game in the collection that matches the provided event info', async (done) => {
         const game = { _id: '12345', league: 'MLB' }
         const mockFind = setUpFindMock([game])
-        const conn = setUpConnMock({ find: mockFind })
-
-        jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+        await setUp({ find: mockFind })
 
         const eventInfo = {
           temperature: 71,
@@ -219,16 +210,38 @@ describe('mongoAdapter', () => {
         expect(result).toEqual(game)
         done()
       })
+
+      it('should return an error if the query fails', async (done) => {
+        const error = new Error('BLAMO')
+        const mockFind = jest.fn().mockReturnValueOnce({
+          sort: jest.fn().mockRejectedValueOnce(error),
+        })
+        await setUp({ find: mockFind })
+
+        const eventInfo = {
+          temperature: 71,
+          site: {
+            capacity: 45050,
+            name: 'Angel Stadium of Anaheim',
+          },
+          start_date_time: '2012-09-26T19:05:00-07:00',
+        }
+        try {
+          await mongoAdapter.findSingleGame(eventInfo)
+          done.fail('Expected find single game to fail but it did not')
+        } catch (err) {
+          expect(err).toEqual(error)
+        }
+
+        done()
+      })
     })
   })
 
   describe('#clearGamesCollection', () => {
     it('should remove all documents from the games collection upon success', async (done) => {
       const mockDelete = jest.fn().mockResolvedValueOnce()
-
-      const conn = setUpConnMock({ deleteMany: mockDelete })
-
-      jest.spyOn(mongoClient, 'connect').mockResolvedValueOnce(conn)
+      await setUp({ deleteMany: mockDelete })
 
       try {
         await mongoAdapter.clearGamesCollection()
@@ -240,13 +253,14 @@ describe('mongoAdapter', () => {
       done()
     })
 
-    it('should return an error if the connection fails', async (done) => {
-      const error = new Error('Failed to conenct to DB')
-      jest.spyOn(mongoClient, 'connect').mockRejectedValueOnce(error)
+    it('should return an error if the collection fails to clear', async (done) => {
+      const error = new Error('BLAMO')
+      const mockDelete = jest.fn().mockRejectedValueOnce(error)
+      await setUp({ deleteMany: mockDelete })
 
       try {
         await mongoAdapter.clearGamesCollection()
-        done.fail('Expected find to fail but it did not.')
+        done.fail('Expected clear collection to fail but it did not')
       } catch (err) {
         expect(err).toEqual(error)
       }

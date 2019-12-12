@@ -8,7 +8,8 @@ let gamesCollection
 const connect = async (callback) => {
   // local address used for development, else use mongo image from docker
   const mongoAddress = process.env.LOCAL ? '127.0.0.1' : 'mongo'
-  return mongoClient.connect(`mongodb://${mongoAddress}:27017/BOX_SCORE`, { useNewUrlParser: true }).then((conn) => {
+  const mongoPort = process.env.BS_MONGO_PORT ? process.env.BS_MONGO_PORT : '27017'
+  return mongoClient.connect(`mongodb://${mongoAddress}:${mongoPort}/BOX_SCORE`, { useNewUrlParser: true }).then((conn) => {
     connection = conn
     gamesCollection = conn.db('BOX_SCORE').collection('games')
     return callback

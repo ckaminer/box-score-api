@@ -1,5 +1,5 @@
 {
-  "name": "box-score-api",
+  "name": "boxscore-api",
   "version": "1.0.0",
   "description": "",
   "main": "./config/server.js",

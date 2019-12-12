@@ -23,7 +23,8 @@ const mongoConn = mongoAdapter.connect().then(() => {
   app.use(express.urlencoded({ extended: false }))
 
   app.use((req, res, next) => {
-    const validHeader = !req.headers.origin || req.headers.origin === 'http://localhost:8080'
+    const CLIENT_PORT = process.env.BS_CLIENT_PORT ? process.env.BS_CLIENT_PORT : 8080
+    const validHeader = !req.headers.origin || req.headers.origin === `http://localhost:${CLIENT_PORT}`
     res.header('Access-Control-Allow-Origin', validHeader ? req.headers.origin : 'no')
     res.header('Access-Control-Allow-Methods', 'GET')
     res.header('Access-Control-Allow-Credentials', true)
@@ -32,8 +33,9 @@ const mongoConn = mongoAdapter.connect().then(() => {
     next()
   })
 
-  server = app.listen(8081, () => {
-    logger.log('info', '[EXPRESS] - listening on port: 8081')
+  const API_PORT = process.env.BS_API_PORT ? process.env.BS_API_PORT : 8081
+  server = app.listen(API_PORT, () => {
+    logger.log('info', `[EXPRESS] - listening on port: ${API_PORT}`)
   })
 
   app.use('/api/v1', router)

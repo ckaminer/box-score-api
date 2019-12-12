@@ -5,10 +5,11 @@ describe('game routes', () => {
   const sleep = (ms) => (
     new Promise(resolve => setTimeout(resolve, ms))
   )
+  const API_PORT = process.env.API_PORT ? process.env.API_PORT : '8081'
 
   describe('GET /api/v1/games', () => {
     it('should return a 200 with all games upon success', async () => {
-      const url = 'http://localhost:8081/api/v1/games'
+      const url = `http://localhost:${API_PORT}/api/v1/games`
       const gamesResponse = await superagent.get(url)
 
       const leagues = ['NBA', 'MLB']
@@ -20,7 +21,7 @@ describe('game routes', () => {
 
     it('should return all games from the cache if less than 15 seconds old or refresh cache if greater', async () => {
       await sleep(15000)
-      const url = 'http://localhost:8081/api/v1/games'
+      const url = `http://localhost:${API_PORT}/api/v1/games`
       const gamesResponse = await superagent.get(url)
 
       const leagues = ['NBA', 'MLB']
@@ -76,7 +77,7 @@ describe('game routes', () => {
     }, 40000)
 
     it('should return a 200 with all games for the MLB when the query param is provided', async () => {
-      const url = 'http://localhost:8081/api/v1/games?league=MLB'
+      const url = `http://localhost:${API_PORT}/api/v1/games?league=MLB`
       const gamesResponse = await superagent.get(url)
 
       expect(gamesResponse.status).toEqual(200)
@@ -85,7 +86,7 @@ describe('game routes', () => {
     })
 
     it('should return a 200 with all games for the NBA when the query param is provided', async () => {
-      const url = 'http://localhost:8081/api/v1/games?league=NBA'
+      const url = `http://localhost:${API_PORT}/api/v1/games?league=NBA`
       const gamesResponse = await superagent.get(url)
 
       expect(gamesResponse.status).toEqual(200)
@@ -94,7 +95,7 @@ describe('game routes', () => {
     })
 
     it('should return a 400 if an invalid league is provided', async (done) => {
-      const url = 'http://localhost:8081/api/v1/games?league=MLS'
+      const url = `http://localhost:${API_PORT}/api/v1/games?league=MLS`
 
       try {
         await superagent.get(url)
@@ -112,7 +113,7 @@ describe('game routes', () => {
     it('should return a 200 with the specified game upon success', async () => {
       const gameId = 'eed38457-db28-4658-ae4f-4d4d38e9e212'
 
-      const url = `http://localhost:8081/api/v1/games/${gameId}`
+      const url = `http://localhost:${API_PORT}/api/v1/games/${gameId}`
       const gameResponse = await superagent.get(url)
       expect(gameResponse.status).toEqual(200)
 
@@ -127,7 +128,7 @@ describe('game routes', () => {
     it('should return the game from the cache if less than 15 seconds old or refresh cache if greater', async () => {
       await sleep(15000)
       const gameId = 'eed38457-db28-4658-ae4f-4d4d38e9e212'
-      const url = `http://localhost:8081/api/v1/games/${gameId}`
+      const url = `http://localhost:${API_PORT}/api/v1/games/${gameId}`
       const gameResponse = await superagent.get(url)
 
       const game = gameResponse.body
